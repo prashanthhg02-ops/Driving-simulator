@@ -1,0 +1,681 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#10191c">
+  <title>Open Road — Driving Simulator</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #10191c;
+      color: #f3f5ef;
+      font-synthesis: none;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      min-width: 320px;
+      min-height: 100vh;
+      margin: 0;
+      display: grid;
+      place-items: center;
+      padding: 20px;
+      background:
+        radial-gradient(ellipse at 50% 0%, rgba(58, 108, 91, .21), transparent 55%),
+        #10191c;
+    }
+
+    button { font: inherit; }
+
+    .game {
+      width: min(1120px, 100%);
+      overflow: hidden;
+      border: 1px solid rgba(222, 239, 220, .13);
+      border-radius: 20px;
+      background: #182326;
+      box-shadow: 0 28px 90px rgba(0, 0, 0, .45);
+    }
+
+    .topbar {
+      min-height: 78px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 20px;
+      padding: 16px 24px;
+      border-bottom: 1px solid rgba(222, 239, 220, .1);
+    }
+
+    .brand { display: flex; align-items: center; gap: 12px; }
+    .brand-mark {
+      width: 38px;
+      height: 38px;
+      display: grid;
+      place-items: center;
+      border-radius: 12px;
+      color: #14221d;
+      background: #b7e26f;
+      font-size: 19px;
+      font-weight: 900;
+    }
+    .brand-name { font-size: 15px; font-weight: 800; letter-spacing: .12em; }
+    .brand-sub { margin-top: 3px; color: #91a29d; font-size: 11px; letter-spacing: .1em; }
+    .top-note { color: #93a49d; font-size: 12px; text-align: right; }
+    .top-note strong { color: #dce7dc; font-weight: 600; }
+
+    .dashboard {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      align-items: center;
+      gap: 16px;
+      padding: 18px 24px;
+    }
+
+    .stats { display: flex; align-items: center; gap: clamp(20px, 5vw, 58px); }
+    .stat-label { color: #8fa19b; font-size: 10px; font-weight: 700; letter-spacing: .16em; }
+    .stat-value { min-width: 72px; margin-top: 4px; font-size: 24px; font-variant-numeric: tabular-nums; font-weight: 750; }
+    .stat-unit { margin-left: 4px; color: #9aaba3; font-size: 11px; font-weight: 500; }
+    .gear { color: #b7e26f; }
+
+    .meter {
+      width: 120px;
+      height: 5px;
+      overflow: hidden;
+      margin-top: 7px;
+      border-radius: 9px;
+      background: #354340;
+    }
+    .meter-fill { width: 0; height: 100%; border-radius: inherit; background: #b7e26f; transition: width .1s linear; }
+
+    .game-area {
+      position: relative;
+      height: min(62vh, 570px);
+      min-height: 340px;
+      overflow: hidden;
+      background: #95bdc0;
+      isolation: isolate;
+    }
+
+    canvas { width: 100%; height: 100%; display: block; }
+
+    .scene-vignette {
+      position: absolute;
+      z-index: 1;
+      inset: 0;
+      pointer-events: none;
+      box-shadow: inset 0 0 90px rgba(9, 20, 20, .25);
+    }
+
+    .overlay {
+      position: absolute;
+      z-index: 2;
+      inset: 0;
+      display: grid;
+      place-items: center;
+      padding: 24px;
+      background: rgba(11, 22, 23, .42);
+      backdrop-filter: blur(3px);
+      transition: opacity .2s ease;
+    }
+    .overlay.hidden { opacity: 0; pointer-events: none; }
+    .card {
+      width: min(420px, 100%);
+      padding: 30px;
+      border: 1px solid rgba(238, 246, 232, .2);
+      border-radius: 18px;
+      background: rgba(20, 32, 32, .91);
+      text-align: center;
+      box-shadow: 0 20px 55px rgba(0, 0, 0, .27);
+    }
+    .eyebrow { color: #b7e26f; font-size: 10px; font-weight: 800; letter-spacing: .2em; }
+    h1 { margin: 10px 0; font-size: clamp(28px, 5vw, 38px); letter-spacing: -.04em; }
+    .card p { margin: 0 auto 22px; color: #b6c4bd; font-size: 14px; line-height: 1.65; }
+    .primary {
+      min-width: 170px;
+      padding: 13px 22px;
+      border: 0;
+      border-radius: 10px;
+      color: #172019;
+      background: #b7e26f;
+      font-weight: 800;
+      cursor: pointer;
+      transition: transform .15s, background .15s;
+    }
+    .primary:hover { transform: translateY(-2px); background: #c8ef83; }
+    .primary:focus-visible, .touch-controls button:focus-visible { outline: 3px solid white; outline-offset: 3px; }
+
+    .toast {
+      position: absolute;
+      z-index: 2;
+      top: 16px;
+      left: 50%;
+      padding: 9px 14px;
+      border: 1px solid rgba(255,255,255,.2);
+      border-radius: 9px;
+      color: #fff;
+      background: rgba(18, 30, 30, .75);
+      font-size: 12px;
+      font-weight: 700;
+      opacity: 0;
+      transform: translate(-50%, -8px);
+      transition: opacity .2s, transform .2s;
+      pointer-events: none;
+    }
+    .toast.show { opacity: 1; transform: translate(-50%, 0); }
+
+    .footer {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      min-height: 66px;
+      padding: 12px 24px;
+      border-top: 1px solid rgba(222, 239, 220, .1);
+    }
+    .hint { color: #a4b2ac; font-size: 12px; }
+    kbd {
+      display: inline-block;
+      min-width: 24px;
+      margin: 0 2px;
+      padding: 4px 6px;
+      border: 1px solid #43524d;
+      border-radius: 5px;
+      color: #e4ede3;
+      background: #263431;
+      font: 11px ui-monospace, SFMono-Regular, Consolas, monospace;
+      text-align: center;
+    }
+    .touch-controls { display: none; gap: 9px; }
+    .touch-controls button {
+      width: 48px;
+      height: 42px;
+      border: 1px solid #43524d;
+      border-radius: 9px;
+      color: #e4ede3;
+      background: #263431;
+      font-size: 17px;
+      touch-action: none;
+    }
+    .touch-controls .pedal { width: 64px; color: #152019; border-color: #b7e26f; background: #b7e26f; font-size: 11px; font-weight: 800; }
+
+    @media (max-width: 600px) {
+      body { padding: 0; place-items: stretch; }
+      .game { min-height: 100vh; border: 0; border-radius: 0; display: flex; flex-direction: column; }
+      .topbar { min-height: 66px; padding: 12px 16px; }
+      .top-note { max-width: 140px; line-height: 1.5; }
+      .dashboard { padding: 14px 16px; }
+      .stats { gap: 15px; }
+      .stat-value { min-width: 58px; font-size: 20px; }
+      .meter { width: 82px; }
+      .game-area { flex: 1; height: auto; min-height: 350px; }
+      .footer { padding: 10px 16px; }
+      .hint { display: none; }
+      .touch-controls { display: flex; }
+      .card { padding: 24px 20px; }
+    }
+  </style>
+</head>
+<body>
+  <main class="game">
+    <header class="topbar">
+      <div class="brand">
+        <div class="brand-mark" aria-hidden="true">↗</div>
+        <div>
+          <div class="brand-name">OPEN ROAD</div>
+          <div class="brand-sub">DRIVING SIMULATOR</div>
+        </div>
+      </div>
+      <div class="top-note"><strong>COUNTRY HIGHWAY</strong><br>Clear skies · Light traffic</div>
+    </header>
+
+    <section class="dashboard" aria-label="Driving dashboard">
+      <div class="stats">
+        <div>
+          <div class="stat-label">SPEED</div>
+          <div class="stat-value"><span id="speed">0</span><span class="stat-unit">KM/H</span></div>
+        </div>
+        <div>
+          <div class="stat-label">GEAR</div>
+          <div class="stat-value gear" id="gear">N</div>
+        </div>
+        <div>
+          <div class="stat-label">ENGINE</div>
+          <div class="meter"><div class="meter-fill" id="engine"></div></div>
+        </div>
+      </div>
+      <div>
+        <div class="stat-label">DISTANCE</div>
+        <div class="stat-value"><span id="distance">0.0</span><span class="stat-unit">KM</span></div>
+      </div>
+    </section>
+
+    <section class="game-area" aria-label="Driving simulator game">
+      <canvas id="scene" aria-label="Highway driving view"></canvas>
+      <div class="scene-vignette"></div>
+      <div class="toast" id="toast" role="status"></div>
+      <div class="overlay" id="overlay">
+        <div class="card">
+          <div class="eyebrow" id="eyebrow">YOUR DRIVE STARTS HERE</div>
+          <h1 id="title">Take the long way.</h1>
+          <p id="message">Cruise a winding country road, find your rhythm, and steer clear of traffic. The road is yours.</p>
+          <button class="primary" id="start">Start driving</button>
+        </div>
+      </div>
+    </section>
+
+    <footer class="footer">
+      <div class="hint"><kbd>↑</kbd>/<kbd>W</kbd> accelerate <kbd>↓</kbd>/<kbd>S</kbd> brake <kbd>←</kbd><kbd>→</kbd> steer</div>
+      <div class="touch-controls" aria-label="Touch driving controls">
+        <button data-control="left" aria-label="Steer left">←</button>
+        <button data-control="right" aria-label="Steer right">→</button>
+        <button class="pedal" data-control="brake" aria-label="Brake">BRAKE</button>
+        <button class="pedal" data-control="accelerate" aria-label="Accelerate">GO</button>
+      </div>
+      <div class="hint">Stay smooth. Enjoy the ride.</div>
+    </footer>
+  </main>
+
+  <script>
+    (() => {
+      const canvas = document.querySelector("#scene");
+      const ctx = canvas.getContext("2d");
+      const area = document.querySelector(".game-area");
+      const overlay = document.querySelector("#overlay");
+      const startButton = document.querySelector("#start");
+      const keys = new Set();
+      const controls = new Set();
+      const colors = {
+        skyTop: "#83b4b6", skyBottom: "#d1d0a6", farHill: "#829d78",
+        hill: "#628263", grassA: "#668c59", grassB: "#709761",
+        roadA: "#626967", roadB: "#686f6c", edge: "#e5ddc2",
+        line: "rgba(246, 239, 205, .82)"
+      };
+
+      let width = 0;
+      let height = 0;
+      let dpr = 1;
+      let running = false;
+      let speed = 0;
+      let distance = 0;
+      let playerX = 0;
+      let roadOffset = 0;
+      let lastTime = 0;
+      let toastTimer = 0;
+      let traffic = [];
+      let bestDistance = Number(localStorage.getItem("open-road-best") || 0);
+
+      const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
+      const lerp = (a, b, t) => a + (b - a) * t;
+      const smoothstep = (a, b, t) => {
+        const x = clamp((t - a) / (b - a), 0, 1);
+        return x * x * (3 - 2 * x);
+      };
+
+      function resize() {
+        const rect = area.getBoundingClientRect();
+        dpr = Math.min(window.devicePixelRatio || 1, 2);
+        width = rect.width;
+        height = rect.height;
+        canvas.width = Math.round(width * dpr);
+        canvas.height = Math.round(height * dpr);
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        draw();
+      }
+
+      function roadCurve(depth) {
+        return Math.sin((depth * 1.7 + roadOffset * .00045) * Math.PI) * .32
+          + Math.sin((depth * .63 - roadOffset * .00023) * Math.PI) * .17;
+      }
+
+      function roadPoint(depth) {
+        const horizon = height * .37;
+        const y = horizon + Math.pow(depth, 1.65) * (height - horizon);
+        const halfRoad = lerp(width * .035, width * .43, Math.pow(depth, 1.12));
+        const center = width * .5 + roadCurve(depth) * width * .43 * smoothstep(0, .65, depth);
+        return { y, halfRoad, center };
+      }
+
+      function drawBackground() {
+        const sky = ctx.createLinearGradient(0, 0, 0, height * .55);
+        sky.addColorStop(0, colors.skyTop);
+        sky.addColorStop(1, colors.skyBottom);
+        ctx.fillStyle = sky;
+        ctx.fillRect(0, 0, width, height * .55);
+
+        const horizon = height * .37;
+        ctx.fillStyle = "#d9d4a9";
+        ctx.beginPath();
+        ctx.arc(width * .78, height * .15, Math.min(width, height) * .052, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.fillStyle = colors.farHill;
+        ctx.beginPath();
+        ctx.moveTo(0, horizon + 16);
+        for (let x = 0; x <= width + 10; x += 10) {
+          const y = horizon - 42 - Math.sin(x * .007 + 1) * 23 - Math.sin(x * .019) * 9;
+          ctx.lineTo(x, y);
+        }
+        ctx.lineTo(width, height);
+        ctx.lineTo(0, height);
+        ctx.closePath();
+        ctx.fill();
+
+        ctx.fillStyle = colors.hill;
+        ctx.beginPath();
+        ctx.moveTo(0, horizon + 30);
+        for (let x = 0; x <= width + 10; x += 10) {
+          const y = horizon - 4 - Math.sin(x * .009 + 2.2) * 25 - Math.sin(x * .024 + 1) * 8;
+          ctx.lineTo(x, y);
+        }
+        ctx.lineTo(width, height);
+        ctx.lineTo(0, height);
+        ctx.closePath();
+        ctx.fill();
+      }
+
+      function drawRoad() {
+        const segments = 100;
+        for (let i = 0; i < segments; i++) {
+          const near = i / segments;
+          const far = (i + 1) / segments;
+          const p1 = roadPoint(near);
+          const p2 = roadPoint(far);
+          const stripe = Math.floor((roadOffset / 55 + i) / 3) % 2 === 0;
+
+          ctx.fillStyle = stripe ? colors.grassA : colors.grassB;
+          ctx.fillRect(0, p2.y, width, p1.y - p2.y + 1);
+
+          const rumble1 = Math.max(2, p1.halfRoad * .075);
+          const rumble2 = Math.max(2, p2.halfRoad * .075);
+          ctx.fillStyle = stripe ? "#f0e8d0" : "#c86b56";
+          ctx.beginPath();
+          ctx.moveTo(p1.center - p1.halfRoad - rumble1, p1.y);
+          ctx.lineTo(p2.center - p2.halfRoad - rumble2, p2.y);
+          ctx.lineTo(p2.center - p2.halfRoad, p2.y);
+          ctx.lineTo(p1.center - p1.halfRoad, p1.y);
+          ctx.closePath();
+          ctx.fill();
+          ctx.beginPath();
+          ctx.moveTo(p1.center + p1.halfRoad, p1.y);
+          ctx.lineTo(p2.center + p2.halfRoad, p2.y);
+          ctx.lineTo(p2.center + p2.halfRoad + rumble2, p2.y);
+          ctx.lineTo(p1.center + p1.halfRoad + rumble1, p1.y);
+          ctx.closePath();
+          ctx.fill();
+
+          ctx.fillStyle = stripe ? colors.roadA : colors.roadB;
+          ctx.beginPath();
+          ctx.moveTo(p1.center - p1.halfRoad, p1.y);
+          ctx.lineTo(p2.center - p2.halfRoad, p2.y);
+          ctx.lineTo(p2.center + p2.halfRoad, p2.y);
+          ctx.lineTo(p1.center + p1.halfRoad, p1.y);
+          ctx.closePath();
+          ctx.fill();
+
+          if (stripe) {
+            ctx.fillStyle = colors.line;
+            const dash1 = Math.max(1, p1.halfRoad * .012);
+            const dash2 = Math.max(1, p2.halfRoad * .012);
+            for (const lane of [-1 / 3, 1 / 3]) {
+              const dashLength = (p1.y - p2.y) * .56;
+              ctx.beginPath();
+              ctx.moveTo(p1.center + lane * p1.halfRoad - dash1, p1.y);
+              ctx.lineTo(p2.center + lane * p2.halfRoad - dash2, p2.y + dashLength);
+              ctx.lineTo(p2.center + lane * p2.halfRoad + dash2, p2.y + dashLength);
+              ctx.lineTo(p1.center + lane * p1.halfRoad + dash1, p1.y);
+              ctx.closePath();
+              ctx.fill();
+            }
+          }
+        }
+      }
+
+      function drawTree(x, y, size) {
+        ctx.fillStyle = "rgba(22, 40, 30, .18)";
+        ctx.beginPath();
+        ctx.ellipse(x + size * .2, y + size * .05, size * .54, size * .13, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = "#624b35";
+        ctx.fillRect(x - size * .08, y - size * .56, size * .16, size * .6);
+        ctx.fillStyle = "#344f39";
+        ctx.beginPath();
+        ctx.moveTo(x, y - size * 1.5);
+        ctx.lineTo(x - size * .62, y - size * .32);
+        ctx.lineTo(x + size * .63, y - size * .32);
+        ctx.closePath();
+        ctx.fill();
+        ctx.fillStyle = "#486746";
+        ctx.beginPath();
+        ctx.moveTo(x, y - size * 1.2);
+        ctx.lineTo(x - size * .48, y - size * .15);
+        ctx.lineTo(x + size * .5, y - size * .15);
+        ctx.closePath();
+        ctx.fill();
+      }
+
+      function drawScenery() {
+        for (let i = 0; i < 16; i++) {
+          const depth = ((i / 16 + (roadOffset / 900) % 1) % 1) * .82 + .08;
+          const p = roadPoint(depth);
+          const size = 8 + depth * 65;
+          const side = i % 2 === 0 ? -1 : 1;
+          const jitter = Math.sin(i * 35.1) * width * .035;
+          const x = p.center + side * (p.halfRoad + size * 1.25) + jitter;
+          drawTree(x, p.y, size);
+        }
+      }
+
+      function drawCar(x, y, w, h, color, isPlayer) {
+        ctx.save();
+        ctx.translate(x, y);
+        ctx.fillStyle = "rgba(12, 19, 20, .33)";
+        ctx.beginPath();
+        ctx.ellipse(0, h * .04, w * .67, h * .14, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.fillStyle = "#202526";
+        ctx.fillRect(-w * .48, -h * .52, w * .16, h * .34);
+        ctx.fillRect(w * .32, -h * .52, w * .16, h * .34);
+        ctx.fillRect(-w * .48, h * .14, w * .16, h * .29);
+        ctx.fillRect(w * .32, h * .14, w * .16, h * .29);
+
+        ctx.fillStyle = color;
+        ctx.beginPath();
+        ctx.moveTo(-w * .38, h * .43);
+        ctx.lineTo(-w * .47, h * .08);
+        ctx.lineTo(-w * .4, -h * .36);
+        ctx.quadraticCurveTo(-w * .35, -h * .48, -w * .22, -h * .5);
+        ctx.lineTo(w * .22, -h * .5);
+        ctx.quadraticCurveTo(w * .35, -h * .48, w * .4, -h * .36);
+        ctx.lineTo(w * .47, h * .08);
+        ctx.lineTo(w * .38, h * .43);
+        ctx.quadraticCurveTo(0, h * .52, -w * .38, h * .43);
+        ctx.closePath();
+        ctx.fill();
+
+        ctx.fillStyle = isPlayer ? "#283d40" : "#314448";
+        ctx.beginPath();
+        ctx.moveTo(-w * .29, -h * .2);
+        ctx.lineTo(-w * .2, -h * .4);
+        ctx.quadraticCurveTo(0, -h * .46, w * .2, -h * .4);
+        ctx.lineTo(w * .29, -h * .2);
+        ctx.lineTo(w * .27, h * .02);
+        ctx.lineTo(-w * .27, h * .02);
+        ctx.closePath();
+        ctx.fill();
+        ctx.fillStyle = "rgba(210, 230, 218, .24)";
+        ctx.fillRect(-w * .025, -h * .39, w * .05, h * .4);
+
+        ctx.fillStyle = isPlayer ? "#fff0bc" : "#e7e0bd";
+        ctx.fillRect(-w * .35, -h * .46, w * .16, h * .07);
+        ctx.fillRect(w * .19, -h * .46, w * .16, h * .07);
+        ctx.fillStyle = "#c95749";
+        ctx.fillRect(-w * .37, h * .28, w * .14, h * .075);
+        ctx.fillRect(w * .23, h * .28, w * .14, h * .075);
+        ctx.restore();
+      }
+
+      function drawTraffic() {
+        traffic.sort((a, b) => a.depth - b.depth);
+        for (const car of traffic) {
+          if (car.depth < .03 || car.depth > 1.05) continue;
+          const p = roadPoint(car.depth);
+          const scale = .12 + car.depth * .92;
+          const carW = Math.max(8, width * .055 * scale);
+          const carH = carW * 1.72;
+          const x = p.center + car.lane * p.halfRoad * .67;
+          drawCar(x, p.y, carW, carH, car.color, false);
+        }
+      }
+
+      function drawPlayer() {
+        const p = roadPoint(.91);
+        const x = p.center + playerX * p.halfRoad * .75;
+        const carW = clamp(width * .092, 36, 82);
+        const carH = carW * 1.7;
+        drawCar(x, height * .88, carW, carH, "#c65c49", true);
+      }
+
+      function draw() {
+        if (!width || !height) return;
+        ctx.clearRect(0, 0, width, height);
+        drawBackground();
+        drawScenery();
+        drawRoad();
+        drawTraffic();
+        drawPlayer();
+      }
+
+      function spawnTraffic() {
+        const lane = [-.67, 0, .67][Math.floor(Math.random() * 3)];
+        const palette = ["#d9b45f", "#6285a0", "#e7e1d2", "#77916b", "#9d7582"];
+        traffic.push({
+          depth: .03,
+          lane,
+          color: palette[Math.floor(Math.random() * palette.length)],
+          speed: .1 + Math.random() * .08
+        });
+      }
+
+      function showToast(message) {
+        const toast = document.querySelector("#toast");
+        toast.textContent = message;
+        toast.classList.add("show");
+        clearTimeout(toastTimer);
+        toastTimer = setTimeout(() => toast.classList.remove("show"), 1100);
+      }
+
+      function updateDashboard() {
+        const kmh = Math.round(speed * 180);
+        document.querySelector("#speed").textContent = kmh;
+        document.querySelector("#gear").textContent = kmh < 2 ? "N" : String(Math.min(6, Math.floor(kmh / 28) + 1));
+        document.querySelector("#distance").textContent = distance.toFixed(1);
+        document.querySelector("#engine").style.width = `${Math.min(100, speed * 110)}%`;
+      }
+
+      function endDrive() {
+        running = false;
+        speed = 0;
+        const rounded = distance.toFixed(1);
+        if (distance > bestDistance) {
+          bestDistance = distance;
+          localStorage.setItem("open-road-best", String(bestDistance));
+        }
+        document.querySelector("#eyebrow").textContent = "DRIVE COMPLETE";
+        document.querySelector("#title").textContent = "A little close.";
+        document.querySelector("#message").textContent = `You drove ${rounded} km before meeting traffic. Take a breath, then hit the road again.`;
+        startButton.textContent = "Drive again";
+        overlay.classList.remove("hidden");
+        updateDashboard();
+      }
+
+      function update(dt) {
+        if (!running) return;
+        const accelerate = keys.has("ArrowUp") || keys.has("w") || keys.has("W") || controls.has("accelerate");
+        const brake = keys.has("ArrowDown") || keys.has("s") || keys.has("S") || controls.has("brake");
+        const left = keys.has("ArrowLeft") || keys.has("a") || keys.has("A") || controls.has("left");
+        const right = keys.has("ArrowRight") || keys.has("d") || keys.has("D") || controls.has("right");
+
+        if (accelerate) speed += .32 * dt;
+        else speed -= .075 * dt;
+        if (brake) speed -= .58 * dt;
+        speed = clamp(speed, 0, 1);
+
+        const steer = (right ? 1 : 0) - (left ? 1 : 0);
+        playerX += steer * dt * (.55 + speed * .42);
+        playerX -= roadCurve(.91) * dt * speed * .13;
+        playerX = clamp(playerX, -1.32, 1.32);
+        roadOffset += speed * 440 * dt;
+        distance += speed * 180 * dt / 3600;
+
+        if (speed > .28 && Math.random() < dt * (.34 + speed * .36)) spawnTraffic();
+        for (const car of traffic) {
+          car.depth += dt * speed * .31 + dt * car.speed * .18;
+        }
+        traffic = traffic.filter(car => car.depth < 1.08);
+
+        const playerLane = playerX * .75;
+        for (const car of traffic) {
+          if (car.depth > .79 && car.depth < 1.02 && Math.abs(car.lane - playerLane) < .31 && speed > .1) {
+            endDrive();
+            return;
+          }
+        }
+
+        if (Math.abs(playerX) > 1.03 && speed > .12) {
+          speed = Math.max(0, speed - .24 * dt);
+          if (Math.random() < dt * .7) showToast("Easy — stay on the road.");
+        }
+        updateDashboard();
+      }
+
+      function frame(time) {
+        const dt = Math.min((time - lastTime) / 1000 || 0, .04);
+        lastTime = time;
+        update(dt);
+        draw();
+        requestAnimationFrame(frame);
+      }
+
+      function startDrive() {
+        speed = 0;
+        distance = 0;
+        playerX = 0;
+        roadOffset = 0;
+        traffic = [];
+        running = true;
+        overlay.classList.add("hidden");
+        updateDashboard();
+      }
+
+      startButton.addEventListener("click", startDrive);
+      window.addEventListener("keydown", event => {
+        if (["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", " "].includes(event.key)) event.preventDefault();
+        keys.add(event.key);
+        if (event.key === " " && !running) startDrive();
+      });
+      window.addEventListener("keyup", event => keys.delete(event.key));
+      window.addEventListener("blur", () => { keys.clear(); controls.clear(); });
+      document.querySelectorAll("[data-control]").forEach(button => {
+        const control = button.dataset.control;
+        button.addEventListener("pointerdown", event => {
+          event.preventDefault();
+          controls.add(control);
+          button.setPointerCapture(event.pointerId);
+        });
+        const release = () => controls.delete(control);
+        button.addEventListener("pointerup", release);
+        button.addEventListener("pointercancel", release);
+        button.addEventListener("lostpointercapture", release);
+      });
+      new ResizeObserver(resize).observe(area);
+      resize();
+      updateDashboard();
+      requestAnimationFrame(frame);
+    })();
+  </script>
+</body>
+</html>
